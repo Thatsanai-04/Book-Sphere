@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans Thai", "Segoe UI", sans-serif;
+  --color-ink: #221d1b;
+  --color-cream: #fffaf4;
+  --color-orange: #f97316;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: #fffaf4; color: #221d1b; }
+button, input { font: inherit; }
+
+.cover { position: relative; overflow: hidden; }
+.cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, rgba(255,255,255,.2), transparent 40%, rgba(0,0,0,.12)); pointer-events: none; }
