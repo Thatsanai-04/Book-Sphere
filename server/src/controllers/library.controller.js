@@ -46,7 +46,8 @@ const downloadBook = async (req, res, next) => {
     const book = await Book.findOne({ slug: req.params.slug, status: "published" }).select("+ebook.fileUrl +ebook.contentHtml");
     if (!book) return res.status(404).json({ message: "Book not found" });
     const owned = await Purchase.exists({ reader: req.auth.sub, book: book.id, status: "paid" });
-    if (!owned) return res.status(403).json({ message: "Purchase or claim this book before downloading" });
+    const hasUnlimitedAccess = (book.buffetEligible || book.isFree) && req.subscription;
+    if (!owned && !hasUnlimitedAccess) return res.status(403).json({ message: "Purchase or claim this book before downloading" });
     if (book.ebook?.contentHtml) return res.json({ contentHtml: book.ebook.contentHtml, title: book.title });
     if (!book.ebook?.fileUrl) return res.status(409).json({ message: "No downloadable e-book file is available" });
     res.json({ downloadUrl: book.ebook.fileUrl });

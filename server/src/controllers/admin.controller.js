@@ -37,14 +37,26 @@ const updateUser = async (req, res, next) => {
 
 const listBooks = async (req, res, next) => {
   try {
-    const books = await Book.find().select("title slug contentType publisher price isFree status publishedAt seller updatedAt").populate("seller", "displayName email").sort({ updatedAt: -1 }).limit(100).lean();
+    const books = await Book.find().select("title slug contentType format sourceType publisher price isFree isRecommended isHeroFeatured status publishedAt seller updatedAt").populate("seller", "displayName email").sort({ updatedAt: -1 }).limit(100).lean();
     res.json({ books });
   } catch (error) { next(error); }
 };
 
 const createBook = async (req, res, next) => {
   try {
-    const data = { ...req.body, seller: req.auth.sub };
+    const data = { ...req.body, seller: req.auth.sub, createdByAdminId: req.auth.sub };
+    data.sourceType = data.sourceType || (req.file ? "upload" : "url");
+    if (req.file) data.ebook = { ...(data.ebook || {}), fileUrl: await uploadToBlob(req.file, "ebooks") };
+    if (typeof data.price === "string") data.price = { amount: Number(data.price), currency: "THB" };
+    if (data.isFree === "true" || data.isFree === true) {
+      data.isFree = true;
+      data.price = { amount: 0, currency: "THB" };
+    }
+    if (!data.contributors && data.author) data.contributors = [{ name: data.author, role: "author" }];
+    if (data.description && !data.synopsis) data.synopsis = data.description;
+    if (data.isHeroFeatured === true && await Book.countDocuments({ isHeroFeatured: true }) >= 3) {
+      return res.status(409).json({ code: "HERO_LIMIT_REACHED", message: "หนังสือหน้าแรกเต็มแล้ว (สูงสุด 3 เล่ม)" });
+    }
     if (data.status === "published" && !data.publishedAt) data.publishedAt = new Date();
     const book = await Book.create(data);
     res.status(201).json({ book });
@@ -89,8 +101,11 @@ const seedBooks = async (req, res, next) => {
 
 const updateBook = async (req, res, next) => {
   try {
-    const allowed = ["title", "synopsis", "coverUrl", "contentType", "publisher", "categories", "tags", "price", "isFree", "status", "publishedAt"];
+    const allowed = ["title", "synopsis", "coverUrl", "contentType", "publisher", "categories", "tags", "price", "isFree", "status", "publishedAt", "isRecommended", "isHeroFeatured"];
     const changes = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));
+    if (changes.isHeroFeatured === true && await Book.countDocuments({ isHeroFeatured: true, _id: { $ne: req.params.id } }) >= 3) {
+      return res.status(409).json({ code: "HERO_LIMIT_REACHED", message: "หนังสือหน้าแรกเต็มแล้ว (สูงสุด 3 เล่ม)" });
+    }
     if (changes.status === "published" && !changes.publishedAt) changes.publishedAt = new Date();
     const book = await Book.findById(req.params.id).select("+ebook.fileUrl");
     if (!book) return res.status(404).json({ message: "Book not found" });
@@ -100,4 +115,40 @@ const updateBook = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { listUsers, updateUser, listBooks, createBook, uploadEbook, uploadCover, seedBooks, updateBook };
+const deleteBook = async (req, res, next) => {
+  try {
+    const book = await Book.findByIdAndDelete(req.params.id);
+    if (!book) return res.status(404).json({ message: "Book not found" });
+    res.json({ message: "Book deleted", id: book.id });
+  } catch (error) { next(error); }
+};
+
+const toggleRecommended = async (req, res, next) => {
+  try {
+    const current = await Book.findById(req.params.id).select("isRecommended").lean();
+    if (!current) return res.status(404).json({ message: "Book not found" });
+    const nextValue = !current.isRecommended;
+    if (nextValue && await Book.countDocuments({ isRecommended: true }) >= 8) {
+      return res.status(409).json({ code: "RECOMMENDED_LIMIT_REACHED", message: "รายการหนังสือแนะนำเต็มแล้ว (สูงสุด 8 เล่ม)" });
+    }
+    const book = await Book.findOneAndUpdate({ _id: req.params.id, isRecommended: current.isRecommended }, { $set: { isRecommended: nextValue } }, { new: true, runValidators: true }).select("title slug contentType format sourceType publisher price isFree isRecommended status publishedAt seller updatedAt").populate("seller", "displayName email").lean();
+    if (!book) return res.status(409).json({ message: "Book status changed. Refresh and try again" });
+    res.json({ book, message: "อัปเดตสถานะหนังสือแนะนำเรียบร้อย" });
+  } catch (error) { next(error); }
+};
+
+const toggleHeroFeatured = async (req, res, next) => {
+  try {
+    const book = await Book.findById(req.params.id).select("isHeroFeatured");
+    if (!book) return res.status(404).json({ message: "Book not found" });
+    const nextValue = !book.isHeroFeatured;
+    if (nextValue && await Book.countDocuments({ isHeroFeatured: true }) >= 3) {
+      return res.status(409).json({ code: "HERO_LIMIT_REACHED", message: "หนังสือหน้าแรกเต็มแล้ว (สูงสุด 3 เล่ม)" });
+    }
+    book.isHeroFeatured = nextValue;
+    await book.save();
+    res.json({ book, message: "อัปเดตหนังสือหน้าแรกเรียบร้อย" });
+  } catch (error) { next(error); }
+};
+
+module.exports = { listUsers, updateUser, listBooks, createBook, uploadEbook, uploadCover, seedBooks, updateBook, toggleRecommended, toggleHeroFeatured, deleteBook };

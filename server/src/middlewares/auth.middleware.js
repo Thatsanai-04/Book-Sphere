@@ -16,8 +16,10 @@ const requireAuth = (req, res, next) => {
 };
 
 const requireRole = (...roles) => (req, res, next) => {
-  if (!req.auth?.roles?.some((role) => roles.includes(role))) {
-    return res.status(403).json({ message: "You do not have permission for this action" });
+  const allowedRoles = roles.map((role) => role.toLowerCase());
+  const userRoles = (req.auth?.roles || []).map((role) => String(role).toLowerCase());
+  if (!userRoles.some((role) => allowedRoles.includes(role))) {
+    return res.status(403).json({ code: "ADMIN_REQUIRED", message: "Admin permission is required for this action" });
   }
   next();
 };

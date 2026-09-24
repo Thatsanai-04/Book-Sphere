@@ -66,10 +66,22 @@ const authorFor = (book) =>
   "Unknown author";
 const priceFor = (book) => book.price?.amount ?? book.price ?? 0;
 
-function BookCard({ book, favorite, onSelect, onToggleFavorite, english }) {
+function BookCard({
+  book,
+  userSubscription,
+  favorite,
+  onSelect,
+  onToggleFavorite,
+  onRead,
+  onSubscribe,
+  onAddToCart,
+  english,
+}) {
   const audio = book.format === "audiobook";
   const discount = book.discountPercent || book.discount?.percent;
-  const isUnlimited = book.buffetEligible || book.isFree;
+  const isUnlimited = book.isUnlimited ?? (book.buffetEligible || book.isFree);
+  const hasUnlimitedAccess =
+    userSubscription === "trialing" || userSubscription === "active";
   return (
     <article className="group min-w-0 text-left">
       <button
@@ -144,6 +156,43 @@ function BookCard({ book, favorite, onSelect, onToggleFavorite, english }) {
               : `฿${priceFor(book).toLocaleString()}`}
           </span>
         </div>
+        <div className="mt-4">
+          {isUnlimited && hasUnlimitedAccess ? (
+            <button
+              type="button"
+              onClick={() => onRead(book)}
+              className="w-full rounded-full bg-orange py-2.5 text-sm font-bold text-white transition hover:bg-orange-600"
+            >
+              อ่านเลย (Unlimited)
+            </button>
+          ) : isUnlimited ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-stone-700">
+                ฿{priceFor(book).toLocaleString()}
+              </span>
+              <button
+                type="button"
+                onClick={() => onSubscribe(book)}
+                className="flex-1 rounded-full bg-orange py-2.5 text-xs font-bold text-white transition hover:bg-orange-600"
+              >
+                อ่านฟรีด้วย Unlimited
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-orange-600">
+                ฿{priceFor(book).toLocaleString()}
+              </span>
+              <button
+                type="button"
+                onClick={() => onAddToCart(book)}
+                className="flex-1 rounded-full bg-ink py-2.5 text-xs font-bold text-white transition hover:bg-orange"
+              >
+                เพิ่มลงตะกร้า
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );
@@ -159,6 +208,7 @@ export default function App({
 }) {
   const english = language === "en";
   const [books, setBooks] = useState([]);
+  const [heroBooks, setHeroBooks] = useState([]);
   const [query, setQuery] = useState("");
   const [format, setFormat] = useState("all");
   const [selected, setSelected] = useState(null);
@@ -166,6 +216,7 @@ export default function App({
   const [cartCount, setCartCount] = useState(0);
   const [subscription, setSubscription] = useState(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [reader, setReader] = useState(null);
   const [favorites, setFavorites] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("plot_bookmarks") || "{}");
@@ -174,8 +225,11 @@ export default function App({
     }
   });
   useEffect(() => {
-    api("/books")
+    api("/books/recommended")
       .then(({ books: records }) => setBooks(records))
+      .catch(() => undefined);
+    api("/books/hero")
+      .then(({ books: records }) => setHeroBooks(records))
       .catch(() => undefined);
   }, []);
   useEffect(() => {
@@ -298,6 +352,28 @@ export default function App({
       toast(error.message);
     }
   };
+  const readBook = async (book) => {
+    if (!user) return onLogin();
+    try {
+      const result = await api(`/library/${book.slug}/download`);
+      if (result.contentHtml)
+        setReader({ title: result.title, contentHtml: result.contentHtml });
+      else if (result.downloadUrl?.startsWith("http"))
+        window.open(result.downloadUrl, "_blank", "noopener,noreferrer");
+      else
+        toast(
+          english
+            ? "This book has no web reader content"
+            : "หนังสือเล่มนี้ยังไม่มีเนื้อหาสำหรับ Web Reader",
+        );
+    } catch (error) {
+      toast(error.message);
+    }
+  };
+  const subscribeFromBook = () =>
+    document
+      .getElementById("unlimited")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
   const toggleFavorite = (slug) =>
     setFavorites((current) => {
       const next = { ...current, [slug]: !current[slug] };
@@ -325,6 +401,21 @@ export default function App({
       .getElementById("books")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  const heroFallback = [
+    {
+      slug: "season",
+      title: english ? "The Season We Remember" : "ฤดูที่เราไม่ลืม",
+      cover: "from-rose-400 to-orange-200",
+    },
+    {
+      slug: "kyoto",
+      title: "Midnight in Kyoto",
+      cover: "from-violet-700 to-indigo-950",
+    },
+  ];
+  const displayedHeroBooks = heroBooks.length
+    ? heroBooks.slice(0, 3)
+    : heroFallback;
   return (
     <main className="min-h-screen overflow-x-hidden">
       <header className="sticky top-0 z-30 border-b border-stone-200/80 bg-cream/90 backdrop-blur">
@@ -416,53 +507,31 @@ export default function App({
               </a>
             </div>
           </div>
-          <div className="grid aspect-square grid-cols-2 gap-3 overflow-hidden rounded-[2rem] bg-ink p-4 text-white shadow-2xl lg:aspect-[4/3]">
-            <button
-              type="button"
-              onClick={() => openHeroBook("season", "ฤดูที่เราไม่ลืม")}
-              className="flex min-h-0 flex-col justify-between rounded-2xl bg-gradient-to-br from-rose-400 to-orange-200 p-4 text-left text-4xl transition hover:-translate-y-1"
-            >
-              <span>✿</span>
-              <p className="font-serif text-lg">
-                {english ? (
-                  <>
-                    The Season
-                    <br />
-                    We Remember
-                  </>
-                ) : (
-                  <>
-                    ฤดูที่เรา
-                    <br />
-                    ไม่ลืม
-                  </>
+          <div
+            className={`grid min-h-[280px] gap-3 overflow-hidden rounded-[2rem] bg-ink p-4 text-white shadow-2xl ${displayedHeroBooks.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}
+          >
+            {displayedHeroBooks.map((book, index) => (
+              <button
+                key={book.slug}
+                type="button"
+                onClick={() => openHeroBook(book.slug, book.title)}
+                className={`relative flex min-h-0 flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br ${book.cover || ["from-rose-400 to-orange-200", "from-violet-700 to-indigo-950", "from-sky-500 to-cyan-200"][index]} p-4 text-left transition hover:-translate-y-1 hover:shadow-xl ${displayedHeroBooks.length === 1 ? "col-span-2" : ""}`}
+              >
+                {book.coverUrl && (
+                  <img
+                    src={book.coverUrl}
+                    alt={`Cover of ${book.title}`}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
                 )}
-              </p>
-            </button>
-            <div className="flex min-h-0 flex-col">
-              <button
-                type="button"
-                onClick={() => openHeroBook("kyoto", "Midnight in Kyoto")}
-                className="min-h-0 flex-1 rounded-2xl bg-gradient-to-br from-violet-700 to-indigo-950 p-4 text-left text-3xl transition hover:-translate-y-1"
-              >
-                ◖
-                <p className="mt-8 font-serif text-base">
-                  Midnight
-                  <br />
-                  in Kyoto
+                <span className="relative text-3xl">
+                  {index === 1 ? "◖" : "✿"}
+                </span>
+                <p className="relative line-clamp-3 font-serif text-base leading-tight">
+                  {book.title}
                 </p>
               </button>
-              <button
-                type="button"
-                onClick={() => openHeroBook("kyoto", "Midnight in Kyoto")}
-                className="mt-3 shrink-0 rounded-2xl bg-white/10 p-3 text-left text-sm transition hover:bg-white/20"
-              >
-                <b>{english ? "Continue listening" : "ฟังต่อจากเมื่อคืน"}</b>
-                <p className="mt-1 text-white/60">
-                  {english ? "Chapter 7 · 18 min" : "บทที่ 7 · 18 นาที"}
-                </p>
-              </button>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -477,7 +546,11 @@ export default function App({
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={viewAllBooks} className="text-sm font-bold text-orange-600 hover:text-orange-700">
+            <button
+              type="button"
+              onClick={viewAllBooks}
+              className="text-sm font-bold text-orange-600 hover:text-orange-700"
+            >
               {english ? "View all recommended →" : "ดูหนังสือแนะนำทั้งหมด →"}
             </button>
             <input
@@ -510,10 +583,14 @@ export default function App({
             <BookCard
               key={book.slug}
               book={book}
+              userSubscription={subscription?.subscriptionStatus || "none"}
               english={english}
               favorite={favorites[book.slug]}
               onSelect={setSelected}
               onToggleFavorite={toggleFavorite}
+              onRead={readBook}
+              onSubscribe={subscribeFromBook}
+              onAddToCart={addToCart}
             />
           ))}
         </div>
@@ -661,9 +738,14 @@ export default function App({
             <p className="mt-1 text-stone-500">{authorFor(selected)}</p>
             <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold">
               <span className="rounded-full bg-stone-100 px-3 py-1.5 text-stone-600">
-                {english ? "File" : "ประเภทไฟล์"}: {selected.format === "audiobook" ? "Audio" : "PDF / EPUB"}
+                {english ? "File" : "ประเภทไฟล์"}:{" "}
+                {selected.format === "audiobook" ? "Audio" : "PDF / EPUB"}
               </span>
-              {(selected.buffetEligible || selected.isFree) && <span className="rounded-full bg-orange-100 px-3 py-1.5 text-orange-700">Unlimited</span>}
+              {(selected.buffetEligible || selected.isFree) && (
+                <span className="rounded-full bg-orange-100 px-3 py-1.5 text-orange-700">
+                  Unlimited
+                </span>
+              )}
             </div>
             <p className="mt-5 text-stone-600">
               {selected.synopsis ||
@@ -672,14 +754,57 @@ export default function App({
                   : "รายละเอียดหนังสือจะเชื่อมต่อจากฐานข้อมูล MongoDB เมื่อเพิ่มรายการหนังสือแล้ว")}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <button type="button" onClick={() => previewBook(selected)} className="rounded-full border border-stone-300 px-5 py-2.5 font-bold text-stone-700 transition hover:border-orange hover:text-orange">
+              <button
+                type="button"
+                onClick={() => previewBook(selected)}
+                className="rounded-full border border-stone-300 px-5 py-2.5 font-bold text-stone-700 transition hover:border-orange hover:text-orange"
+              >
                 {english ? "Try preview" : "ทดลองอ่านตัวอย่าง"}
               </button>
-              <button type="button" onClick={() => (selected.buffetEligible || selected.isFree ? previewBook(selected) : addToCart(selected))} className="rounded-full bg-ink px-5 py-2.5 font-bold text-white transition hover:bg-orange">
-                {selected.buffetEligible || selected.isFree ? (english ? "Read now" : "อ่านเลย") : `${english ? "Add to cart" : "เพิ่มลงตะกร้า"} · ฿${priceFor(selected).toLocaleString()}`}
+              <button
+                type="button"
+                onClick={() =>
+                  selected.buffetEligible || selected.isFree
+                    ? previewBook(selected)
+                    : addToCart(selected)
+                }
+                className="rounded-full bg-ink px-5 py-2.5 font-bold text-white transition hover:bg-orange"
+              >
+                {selected.buffetEligible || selected.isFree
+                  ? english
+                    ? "Read now"
+                    : "อ่านเลย"
+                  : `${english ? "Add to cart" : "เพิ่มลงตะกร้า"} · ฿${priceFor(selected).toLocaleString()}`}
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {reader && (
+        <div
+          className="fixed inset-0 z-50 bg-[#fffaf4]"
+          role="dialog"
+          aria-modal="true"
+        >
+          <header className="border-b border-stone-200 bg-white">
+            <div className="mx-auto flex h-[72px] max-w-3xl items-center justify-between px-5">
+              <button
+                type="button"
+                onClick={() => setReader(null)}
+                className="text-sm font-bold"
+              >
+                ← {english ? "Back" : "กลับ"}
+              </button>
+              <span className="truncate px-4 font-black">{reader.title}</span>
+              <span className="text-xs font-bold text-orange">
+                PLOT UNLIMITED
+              </span>
+            </div>
+          </header>
+          <article
+            className="mx-auto max-w-3xl overflow-y-auto px-5 py-12 leading-8 text-stone-800 sm:py-16"
+            dangerouslySetInnerHTML={{ __html: reader.contentHtml }}
+          />
         </div>
       )}
       {notice && (

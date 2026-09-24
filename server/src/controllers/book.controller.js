@@ -1,22 +1,27 @@
 const Book = require("../models/book.model");
 
 const publicBookFields = "title slug synopsis coverUrl format contentType publisher language origin contributors categories tags price isFree buffetEligible ebook.previewUrl publishedAt";
-const recommendedFields = "_id title coverUrl contributors rating price buffetEligible isFree contentType categories isRecommended readCount salesCount";
+const recommendedFields = "_id slug title synopsis coverUrl format contributors rating price buffetEligible isFree contentType categories isRecommended isHeroFeatured readCount salesCount";
 
 const recommendedBookResponse = (book) => ({
   id: book._id,
+  slug: book.slug,
   title: book.title,
+  synopsis: book.synopsis,
   coverUrl: book.coverUrl || null,
+  format: book.format,
   author: book.contributors?.find((item) => item.role === "author")?.name || "Unknown author",
   rating: book.rating?.average ?? 0,
   price: book.price,
   isUnlimited: Boolean(book.buffetEligible || book.isFree),
+  contentType: book.contentType,
   category: book.contentType || book.categories?.[0] || null,
+  buffetEligible: Boolean(book.buffetEligible),
 });
 
 const listRecommendedBooks = async (req, res, next) => {
   try {
-    const filter = { status: "published" };
+    const filter = { status: "published", isRecommended: true };
     const category = req.query.category?.trim().toLowerCase();
     if (category) filter.$or = [{ contentType: category }, { categories: category }];
 
@@ -30,6 +35,17 @@ const listRecommendedBooks = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+const listHeroBooks = async (req, res, next) => {
+  try {
+    const books = await Book.find({ status: "published", isHeroFeatured: true })
+      .select(recommendedFields)
+      .sort({ updatedAt: -1 })
+      .limit(3)
+      .lean();
+    res.json({ books: books.map(recommendedBookResponse) });
+  } catch (error) { next(error); }
 };
 
 const listBooks = async (req, res, next) => {
@@ -72,4 +88,4 @@ const getBookBySlug = async (req, res, next) => {
   }
 };
 
-module.exports = { listBooks, listRecommendedBooks, recommendedBookResponse, getBookBySlug, createBook };
+module.exports = { listBooks, listRecommendedBooks, listHeroBooks, recommendedBookResponse, getBookBySlug, createBook };

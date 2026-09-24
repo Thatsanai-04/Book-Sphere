@@ -74,6 +74,8 @@ const bookSchema = new Schema(
       expiresAt: { type: Date },
     },
     seller: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    createdByAdminId: { type: Schema.Types.ObjectId, ref: "User" },
+    sourceType: { type: String, enum: ["url", "upload", "writer"] },
     contributors: {
       type: [contributorSchema],
       required: true,
@@ -82,6 +84,7 @@ const bookSchema = new Schema(
     categories: [{ type: String, trim: true, lowercase: true, maxlength: 50 }],
     tags: [{ type: String, trim: true, lowercase: true, maxlength: 50 }],
     isRecommended: { type: Boolean, default: false, index: true },
+    isHeroFeatured: { type: Boolean, default: false, index: true },
     readCount: { type: Number, default: 0, min: 0 },
     salesCount: { type: Number, default: 0, min: 0 },
     rating: {

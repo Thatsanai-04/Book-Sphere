@@ -29,7 +29,10 @@ test("accepts a sellable e-book in each supported catalogue type", async () => {
 test("recommended book fields default safely and map to the public response", () => {
   const book = validBook({
     title: "Recommended Story",
+    slug: "recommended-story",
+    synopsis: "A recommended synopsis.",
     coverUrl: "https://files.example.test/cover.jpg",
+    format: "ebook",
     contributors: [{ name: "An Author", role: "author" }],
     buffetEligible: true,
     isRecommended: true,
@@ -43,13 +46,18 @@ test("recommended book fields default safely and map to the public response", ()
   assert.equal(book.readCount, 42);
   assert.deepEqual(response, {
     id: book._id,
+    slug: "recommended-story",
     title: "Recommended Story",
+    synopsis: "A recommended synopsis.",
     coverUrl: "https://files.example.test/cover.jpg",
+    format: "ebook",
     author: "An Author",
     rating: 4.8,
     price: { amount: 99, currency: "THB" },
     isUnlimited: true,
+    contentType: "novel",
     category: "novel",
+    buffetEligible: true,
   });
 });
 

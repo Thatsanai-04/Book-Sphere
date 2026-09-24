@@ -30,8 +30,12 @@ export default function AuthShell() {
     setUser(null);
     setScreen("store");
   };
+  const handleAdminUnauthorized = () => {
+    signOut();
+    setMode("login");
+  };
 
-  if (user && screen === "admin") return <AdminPage language={language} onLanguageChange={setLanguage} onBack={() => setScreen("account")} onCart={() => setScreen("cart")} />;
+  if (user && screen === "admin") return <AdminPage language={language} onLanguageChange={setLanguage} onBack={() => setScreen("account")} onCart={() => setScreen("cart")} onUnauthorized={handleAdminUnauthorized} />;
   if (user && screen === "cart") return <CartPage onBack={() => setScreen("store")} />;
   if (user && screen === "library") return <LibraryPage user={user} onBack={() => setScreen("account")} />;
   if (user && screen === "account") return <AccountPage initialUser={user} onUserUpdated={updateUser} onSignOut={signOut} onBack={() => setScreen("store")} onLibrary={() => setScreen("library")} onAdmin={() => setScreen("admin")} />;
