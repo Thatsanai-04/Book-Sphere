@@ -2,6 +2,10 @@ const User = require("../models/user.model");
 
 const requireUnlimitedAccess = async (req, res, next) => {
   try {
+    if (req.auth?.roles?.some((role) => String(role).toLowerCase() === "admin")) {
+      req.subscription = { subscriptionStatus: "admin_unlimited", isAdmin: true };
+      return next();
+    }
     const user = await User.findById(req.auth.sub).select("subscriptionStatus trialEndDate");
     if (!user) return res.status(404).json({ message: "User not found" });
 

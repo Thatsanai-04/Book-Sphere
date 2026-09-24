@@ -69,6 +69,7 @@ const priceFor = (book) => book.price?.amount ?? book.price ?? 0;
 function BookCard({
   book,
   userSubscription,
+  isAdmin,
   favorite,
   onSelect,
   onToggleFavorite,
@@ -81,7 +82,7 @@ function BookCard({
   const discount = book.discountPercent || book.discount?.percent;
   const isUnlimited = book.isUnlimited ?? (book.buffetEligible || book.isFree);
   const hasUnlimitedAccess =
-    userSubscription === "trialing" || userSubscription === "active";
+    isAdmin || userSubscription === "trialing" || userSubscription === "active";
   return (
     <article className="group min-w-0 text-left">
       <button
@@ -207,6 +208,9 @@ export default function App({
   onCartClick,
 }) {
   const english = language === "en";
+  const isAdmin = user?.roles?.some(
+    (role) => String(role).toLowerCase() === "admin",
+  );
   const [books, setBooks] = useState([]);
   const [heroBooks, setHeroBooks] = useState([]);
   const [query, setQuery] = useState("");
@@ -299,37 +303,47 @@ export default function App({
         ? "Monthly subscription checkout is coming soon"
         : "ระบบชำระค่าสมาชิกรายเดือนกำลังเปิดให้ใช้งาน",
     );
-  const subscriptionButton = subscriptionLoading
+  const subscriptionButton = isAdmin
     ? {
-        label: english ? "Checking subscription..." : "กำลังตรวจสอบแพ็กเกจ...",
+        label: english
+          ? "Unlimited access for Admin"
+          : "Admin ใช้งาน Unlimited ได้ไม่จำกัด",
         action: undefined,
         disabled: true,
       }
-    : subscription?.subscriptionStatus === "trialing" ||
-        subscription?.subscriptionStatus === "active"
+    : subscriptionLoading
       ? {
           label: english
-            ? "Unlimited is active"
-            : "กำลังใช้งานแพ็กเกจ Unlimited",
+            ? "Checking subscription..."
+            : "กำลังตรวจสอบแพ็กเกจ...",
           action: undefined,
           disabled: true,
         }
-      : subscription?.subscriptionStatus === "expired" ||
-          subscription?.hasUsedTrial
+      : subscription?.subscriptionStatus === "trialing" ||
+          subscription?.subscriptionStatus === "active"
         ? {
             label: english
-              ? "Subscribe ฿199 / month"
-              : "สมัครสมาชิก ฿199 / เดือน",
-            action: subscribe,
-            disabled: false,
+              ? "Unlimited is active"
+              : "กำลังใช้งานแพ็กเกจ Unlimited",
+            action: undefined,
+            disabled: true,
           }
-        : {
-            label: english
-              ? "Start 7-day free trial"
-              : "เริ่มทดลองใช้ฟรี 7 วัน",
-            action: startTrial,
-            disabled: false,
-          };
+        : subscription?.subscriptionStatus === "expired" ||
+            subscription?.hasUsedTrial
+          ? {
+              label: english
+                ? "Subscribe ฿199 / month"
+                : "สมัครสมาชิก ฿199 / เดือน",
+              action: subscribe,
+              disabled: false,
+            }
+          : {
+              label: english
+                ? "Start 7-day free trial"
+                : "เริ่มทดลองใช้ฟรี 7 วัน",
+              action: startTrial,
+              disabled: false,
+            };
   const openHeroBook = (slug, title) => {
     const book = books.find((item) => item.slug === slug);
     if (book) setSelected(book);
@@ -584,6 +598,7 @@ export default function App({
               key={book.slug}
               book={book}
               userSubscription={subscription?.subscriptionStatus || "none"}
+              isAdmin={isAdmin}
               english={english}
               favorite={favorites[book.slug]}
               onSelect={setSelected}
@@ -656,6 +671,13 @@ export default function App({
                 / {english ? "month" : "เดือน"}
               </span>
             </p>
+            {isAdmin && (
+              <p className="mt-3 text-sm font-bold text-emerald-700">
+                {english
+                  ? "Admin access: no payment required"
+                  : "สิทธิ์ Admin: ใช้งานได้โดยไม่ต้องชำระเงิน"}
+              </p>
+            )}
             {subscription?.subscriptionStatus === "trialing" && (
               <p className="mt-3 text-sm font-bold text-emerald-700">
                 {english
@@ -765,15 +787,29 @@ export default function App({
                 type="button"
                 onClick={() =>
                   selected.buffetEligible || selected.isFree
-                    ? previewBook(selected)
+                    ? user?.roles?.some(
+                        (role) => String(role).toLowerCase() === "admin",
+                      ) ||
+                      subscription?.subscriptionStatus === "trialing" ||
+                      subscription?.subscriptionStatus === "active"
+                      ? readBook(selected)
+                      : subscribeFromBook()
                     : addToCart(selected)
                 }
                 className="rounded-full bg-ink px-5 py-2.5 font-bold text-white transition hover:bg-orange"
               >
                 {selected.buffetEligible || selected.isFree
-                  ? english
-                    ? "Read now"
-                    : "อ่านเลย"
+                  ? user?.roles?.some(
+                      (role) => String(role).toLowerCase() === "admin",
+                    ) ||
+                    subscription?.subscriptionStatus === "trialing" ||
+                    subscription?.subscriptionStatus === "active"
+                    ? english
+                      ? "Read now"
+                      : "อ่านเลย"
+                    : english
+                      ? "Read free with Unlimited"
+                      : "อ่านฟรีด้วย Unlimited"
                   : `${english ? "Add to cart" : "เพิ่มลงตะกร้า"} · ฿${priceFor(selected).toLocaleString()}`}
               </button>
             </div>
