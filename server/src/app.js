@@ -7,6 +7,7 @@ const libraryRoutes = require("./routes/library.routes");
 const adminRoutes = require("./routes/admin.routes");
 const cartRoutes = require("./routes/cart.routes");
 const subscriptionRoutes = require("./routes/subscription.routes");
+const orderRoutes = require("./routes/order.routes");
 const { notFound, errorHandler } = require("./middlewares/error.middleware");
 const app = express();
 
@@ -23,6 +24,7 @@ app.use("/api/library", libraryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/subscription", subscriptionRoutes);
+app.use("/api/orders", orderRoutes);
 
 // 3. Error handling — must be LAST
 app.use(notFound);

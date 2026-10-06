@@ -5,6 +5,7 @@ import AccountPage from "./AccountPage";
 import AdminPage from "./AdminPage";
 import CartPage from "./CartPage";
 import LibraryPage from "./LibraryPage";
+import PaymentAdminPage from "./PaymentAdminPage";
 
 export default function AuthShell() {
   const [user, setUser] = useState(() => {
@@ -35,8 +36,9 @@ export default function AuthShell() {
     setMode("login");
   };
 
-  if (user && screen === "admin") return <AdminPage language={language} onLanguageChange={setLanguage} onBack={() => setScreen("account")} onCart={() => setScreen("cart")} onUnauthorized={handleAdminUnauthorized} />;
-  if (user && screen === "cart") return <CartPage onBack={() => setScreen("store")} />;
+  if (user && screen === "admin") return <AdminPage language={language} onLanguageChange={setLanguage} onBack={() => setScreen("account")} onCart={() => setScreen("cart")} onPayments={() => setScreen("payments")} onUnauthorized={handleAdminUnauthorized} />;
+  if (user && screen === "payments") return <PaymentAdminPage language={language} onBack={() => setScreen("admin")} onUnauthorized={handleAdminUnauthorized} />;
+  if (user && screen === "cart") return <CartPage onBack={() => setScreen("store")} onLibrary={() => setScreen("library")} />;
   if (user && screen === "library") return <LibraryPage user={user} onBack={() => setScreen("account")} />;
   if (user && screen === "account") return <AccountPage initialUser={user} onUserUpdated={updateUser} onSignOut={signOut} onBack={() => setScreen("store")} onLibrary={() => setScreen("library")} onAdmin={() => setScreen("admin")} />;
 

@@ -25,6 +25,7 @@ export default function AdminPage({
   onLanguageChange,
   onBack,
   onCart,
+  onPayments,
   onUnauthorized,
 }) {
   const english = language === "en";
@@ -370,6 +371,13 @@ export default function AdminPage({
               className="rounded-full border border-stone-300 px-4 py-2 text-sm font-bold"
             >
               {english ? "Cart" : "ตะกร้าสินค้า"}
+            </button>
+            <button
+              type="button"
+              onClick={onPayments}
+              className="rounded-full bg-orange px-4 py-2 text-sm font-bold text-white"
+            >
+              {english ? "Payments" : "การชำระเงิน"}
             </button>
             <span className="rounded-full bg-ink px-4 py-2 text-sm font-bold text-white">
               ADMIN CONSOLE

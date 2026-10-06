@@ -4,6 +4,9 @@ const notFound = (req, res, next) => {
 
 const errorHandler = (err, req, res, next) => {
     console.error(err.stack);
+    if (err.status && err.status < 500) {
+        return res.status(err.status).json({ message: err.message });
+    }
     if (err.name === "ValidationError") {
         return res.status(400).json({ message: err.message });
     }

@@ -2,6 +2,7 @@ const express = require("express");
 const { requireAuth, requireRole } = require("../middlewares/auth.middleware");
 const { listUsers, updateUser, listBooks, createBook, uploadEbook, uploadCover, seedBooks, updateBook, toggleRecommended, toggleHeroFeatured, deleteBook } = require("../controllers/admin.controller");
 const { ebookUpload, coverUpload } = require("../middlewares/upload.middleware");
+const { getPaymentSettings, updatePaymentSettings, getTransactions, refundTransaction, reviewSlip } = require("../controllers/payment-admin.controller");
 
 const router = express.Router();
 router.use(requireAuth, requireRole("admin"));
@@ -17,5 +18,10 @@ router.patch("/books/:id/recommend", toggleRecommended);
 router.patch("/books/:id/hero", toggleHeroFeatured);
 router.patch("/books/:id", updateBook);
 router.delete("/books/:id", deleteBook);
+router.get("/payment-settings", getPaymentSettings);
+router.put("/payment-settings", updatePaymentSettings);
+router.get("/payments/transactions", getTransactions);
+router.post("/payments/:orderId/refund", refundTransaction);
+router.post("/payments/:orderId/review-slip", reviewSlip);
 
 module.exports = router;
