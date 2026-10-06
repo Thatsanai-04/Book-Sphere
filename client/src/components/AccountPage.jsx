@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import SubscriptionStatus from "./SubscriptionStatus";
 
-export default function AccountPage({ initialUser, onUserUpdated, onSignOut, onBack, onLibrary, onAdmin }) {
+export default function AccountPage({ initialUser, onUserUpdated, onSignOut, onBack, onLibrary, onAdmin, onWriter }) {
   const [user, setUser] = useState(initialUser);
   const [form, setForm] = useState({
     displayName: initialUser.displayName || "",
@@ -71,6 +71,7 @@ export default function AccountPage({ initialUser, onUserUpdated, onSignOut, onB
           <div className="mt-6 border-t border-white/15 pt-5 text-sm text-stone-300"><p>สมาชิกตั้งแต่</p><p className="mt-1 font-bold text-white">{new Intl.DateTimeFormat("th-TH", { dateStyle: "long" }).format(new Date(user.createdAt))}</p></div>
           <button onClick={onBack} className="mt-7 w-full rounded-full bg-white/10 py-3 text-sm font-bold hover:bg-white/20">เลือกหนังสือต่อ</button>
           <button onClick={onLibrary} className="mt-3 w-full rounded-full bg-white/10 py-3 text-sm font-bold hover:bg-white/20">คลังหนังสือของฉัน</button>
+          {user.roles?.includes("author") && <button onClick={onWriter} className="mt-3 w-full rounded-full bg-white/10 py-3 text-sm font-bold hover:bg-white/20">หนังสือของฉันที่ส่งขาย</button>}
           {user.roles?.includes("admin") && <button onClick={onAdmin} className="mt-3 w-full rounded-full bg-orange py-3 text-sm font-bold text-white">Admin console</button>}
         </aside>
         <div className="space-y-6">

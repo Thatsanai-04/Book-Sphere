@@ -6,7 +6,7 @@ const router = express.Router();
 router.get("/", listBooks);
 router.get("/recommended", listRecommendedBooks);
 router.get("/hero", listHeroBooks);
-router.post("/", requireAuth, requireRole("author", "admin"), createBook);
+router.post("/", requireAuth, requireRole("author"), createBook);
 router.get("/:slug", getBookBySlug);
 
 module.exports = router;

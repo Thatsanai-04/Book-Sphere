@@ -103,12 +103,21 @@ const updateBook = async (req, res, next) => {
   try {
     const allowed = ["title", "synopsis", "coverUrl", "contentType", "publisher", "categories", "tags", "price", "isFree", "status", "publishedAt", "isRecommended", "isHeroFeatured"];
     const changes = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));
+    if (changes.status !== undefined && !["draft", "published"].includes(changes.status)) {
+      return res.status(400).json({ message: "Status must be draft or published" });
+    }
+    const book = await Book.findById(req.params.id).select("+ebook.fileUrl");
+    if (!book) return res.status(404).json({ message: "Book not found" });
+    if (changes.status && book.status === "pending_approval") {
+      return res.status(409).json({ message: "Use the approval queue to approve or reject this submission" });
+    }
+    if (changes.status === "published" && book.status === "rejected") {
+      return res.status(409).json({ message: "Rejected submissions must be reviewed and resubmitted before publishing" });
+    }
     if (changes.isHeroFeatured === true && await Book.countDocuments({ isHeroFeatured: true, _id: { $ne: req.params.id } }) >= 3) {
       return res.status(409).json({ code: "HERO_LIMIT_REACHED", message: "หนังสือหน้าแรกเต็มแล้ว (สูงสุด 3 เล่ม)" });
     }
     if (changes.status === "published" && !changes.publishedAt) changes.publishedAt = new Date();
-    const book = await Book.findById(req.params.id).select("+ebook.fileUrl");
-    if (!book) return res.status(404).json({ message: "Book not found" });
     Object.assign(book, changes);
     await book.save();
     res.json({ book });
@@ -120,6 +129,44 @@ const deleteBook = async (req, res, next) => {
     const book = await Book.findByIdAndDelete(req.params.id);
     if (!book) return res.status(404).json({ message: "Book not found" });
     res.json({ message: "Book deleted", id: book.id });
+  } catch (error) { next(error); }
+};
+
+const listPendingBooks = async (req, res, next) => {
+  try {
+    const books = await Book.find({ status: "pending_approval" })
+      .select("title slug synopsis coverUrl format contentType publisher contributors price isFree sourceType createdAt seller sellerId authorId +ebook.fileUrl +ebook.contentHtml")
+      .populate("seller", "displayName email")
+      .sort({ createdAt: 1 })
+      .lean();
+    res.json({ books });
+  } catch (error) { next(error); }
+};
+
+const approveBook = async (req, res, next) => {
+  try {
+    const book = await Book.findOneAndUpdate(
+      { _id: req.params.id, status: "pending_approval" },
+      { $set: { status: "published", publishedAt: new Date() }, $unset: { rejectionReason: 1 } },
+      { new: true, runValidators: true },
+    ).populate("seller", "displayName email");
+    if (!book) return res.status(404).json({ message: "Pending book not found" });
+    res.json({ book, message: "Book approved and published" });
+  } catch (error) { next(error); }
+};
+
+const rejectBook = async (req, res, next) => {
+  try {
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    if (!reason) return res.status(400).json({ message: "A rejection reason is required" });
+    if (reason.length > 2_000) return res.status(400).json({ message: "Rejection reason must be 2,000 characters or fewer" });
+    const book = await Book.findOneAndUpdate(
+      { _id: req.params.id, status: "pending_approval" },
+      { $set: { status: "rejected", rejectionReason: reason }, $unset: { publishedAt: 1 } },
+      { new: true, runValidators: true },
+    ).populate("seller", "displayName email");
+    if (!book) return res.status(404).json({ message: "Pending book not found" });
+    res.json({ book, message: "Book submission rejected" });
   } catch (error) { next(error); }
 };
 
@@ -151,4 +198,4 @@ const toggleHeroFeatured = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { listUsers, updateUser, listBooks, createBook, uploadEbook, uploadCover, seedBooks, updateBook, toggleRecommended, toggleHeroFeatured, deleteBook };
+module.exports = { listUsers, updateUser, listBooks, createBook, uploadEbook, uploadCover, seedBooks, updateBook, toggleRecommended, toggleHeroFeatured, deleteBook, listPendingBooks, approveBook, rejectBook };

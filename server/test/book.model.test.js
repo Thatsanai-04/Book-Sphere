@@ -26,6 +26,22 @@ test("accepts a sellable e-book in each supported catalogue type", async () => {
   }
 });
 
+test("supports author ownership and the approval/rejection lifecycle", async () => {
+  const authorId = new mongoose.Types.ObjectId();
+  const pending = validBook({
+    authorId,
+    sellerId: authorId,
+    status: "pending_approval",
+  });
+  await assert.doesNotReject(pending.validate());
+  assert.equal(pending.authorId.toString(), authorId.toString());
+  assert.equal(pending.sellerId.toString(), authorId.toString());
+
+  const rejected = validBook({ status: "rejected", rejectionReason: "Cover is unreadable" });
+  await assert.doesNotReject(rejected.validate());
+  await assert.rejects(validBook({ status: "pending_review" }).validate(), /is not a valid enum value/);
+});
+
 test("recommended book fields default safely and map to the public response", () => {
   const book = validBook({
     title: "Recommended Story",

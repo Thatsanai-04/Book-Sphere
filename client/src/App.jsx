@@ -206,6 +206,7 @@ export default function App({
   onLogin,
   onAccountClick,
   onCartClick,
+  onWriterClick,
 }) {
   const english = language === "en";
   const isAdmin = user?.roles?.some(
@@ -711,13 +712,7 @@ export default function App({
               : "เปิดพื้นที่ให้คุณขาย E-Book จัดการราคา และเข้าถึงนักอ่านกลุ่มใหม่"}
           </p>
           <button
-            onClick={() =>
-              toast(
-                english
-                  ? "The writer space is coming soon"
-                  : "พื้นที่สำหรับนักเขียนกำลังเปิดให้ใช้งาน",
-              )
-            }
+            onClick={onWriterClick}
             className="mt-7 rounded-full bg-ink px-6 py-3.5 font-bold text-white"
           >
             {english ? "Start selling your book" : "เริ่มขายหนังสือของคุณ"}

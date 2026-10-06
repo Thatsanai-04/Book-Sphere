@@ -26,6 +26,7 @@ export default function AdminPage({
   onBack,
   onCart,
   onPayments,
+  onPendingBooks,
   onUnauthorized,
 }) {
   const english = language === "en";
@@ -378,6 +379,13 @@ export default function AdminPage({
               className="rounded-full bg-orange px-4 py-2 text-sm font-bold text-white"
             >
               {english ? "Payments" : "การชำระเงิน"}
+            </button>
+            <button
+              type="button"
+              onClick={onPendingBooks}
+              className="rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-900"
+            >
+              {english ? "Pending books" : "หนังสือรออนุมัติ"}
             </button>
             <span className="rounded-full bg-ink px-4 py-2 text-sm font-bold text-white">
               ADMIN CONSOLE
@@ -812,11 +820,15 @@ export default function AdminPage({
                         </td>
                         <td>
                           <span
-                            className={`rounded-full px-2 py-1 text-xs font-bold ${book.status === "published" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}
+                            className={`rounded-full px-2 py-1 text-xs font-bold ${book.status === "published" ? "bg-emerald-100 text-emerald-700" : book.status === "rejected" ? "bg-red-100 text-red-700" : book.status === "pending_approval" ? "bg-amber-100 text-amber-700" : "bg-stone-100 text-stone-700"}`}
                           >
                             {book.status === "published"
                               ? "เผยแพร่"
-                              : "ฉบับร่าง"}
+                              : book.status === "pending_approval"
+                                ? "รออนุมัติ"
+                                : book.status === "rejected"
+                                  ? "ไม่อนุมัติ"
+                                  : "ฉบับร่าง"}
                           </span>
                         </td>
                         <td>
@@ -851,7 +863,7 @@ export default function AdminPage({
                         </td>
                         <td>
                           <div className="flex flex-wrap gap-2">
-                            <button
+                            {!["pending_approval", "rejected"].includes(book.status) && <button
                               type="button"
                               onClick={() =>
                                 updateBook(book._id, {
@@ -863,10 +875,8 @@ export default function AdminPage({
                               }
                               className="text-xs font-bold text-orange-600"
                             >
-                              {book.status === "published"
-                                ? "เป็นฉบับร่าง"
-                                : "เผยแพร่"}
-                            </button>
+                              {book.status === "published" ? "เป็นฉบับร่าง" : "เผยแพร่"}
+                            </button>}
                             <button
                               type="button"
                               onClick={() =>
@@ -982,7 +992,6 @@ export default function AdminPage({
                 >
                   <option value="draft">ฉบับร่าง</option>
                   <option value="published">เผยแพร่</option>
-                  <option value="unpublished">ไม่เผยแพร่</option>
                 </select>
               </label>
             </div>

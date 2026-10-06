@@ -74,7 +74,10 @@ const bookSchema = new Schema(
       expiresAt: { type: Date },
     },
     seller: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    sellerId: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    authorId: { type: Schema.Types.ObjectId, ref: "User", index: true },
     createdByAdminId: { type: Schema.Types.ObjectId, ref: "User" },
+    rejectionReason: { type: String, trim: true, maxlength: 2_000 },
     sourceType: { type: String, enum: ["url", "upload", "writer"] },
     contributors: {
       type: [contributorSchema],
@@ -101,7 +104,7 @@ const bookSchema = new Schema(
     buffetAvailableUntil: { type: Date },
     status: {
       type: String,
-      enum: ["draft", "pending_review", "published", "unpublished"],
+      enum: ["draft", "pending_approval", "published", "rejected"],
       default: "draft",
     },
     publishedAt: { type: Date },
@@ -113,6 +116,7 @@ bookSchema.index({ status: 1, contentType: 1, isFree: 1, publishedAt: -1 });
 bookSchema.index({ status: 1, buffetEligible: 1, buffetAvailableFrom: 1, buffetAvailableUntil: 1 });
 bookSchema.index({ status: 1, isRecommended: -1, readCount: -1, salesCount: -1, publishedAt: -1 });
 bookSchema.index({ seller: 1, status: 1 });
+bookSchema.index({ authorId: 1, status: 1, updatedAt: -1 });
 bookSchema.index({ title: "text", synopsis: "text", categories: "text", tags: "text" });
 
 bookSchema.pre("validate", function validateBook() {

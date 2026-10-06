@@ -73,7 +73,7 @@ const becomeAuthor = async (req, res, next) => {
       { new: true, runValidators: true }
     );
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json({ user: user.toPublicJSON() });
+    authResponse(res, 200, user);
   } catch (error) {
     next(error);
   }

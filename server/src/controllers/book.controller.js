@@ -71,8 +71,20 @@ const listBooks = async (req, res, next) => {
 
 const createBook = async (req, res, next) => {
   try {
-    const book = await Book.create({ ...req.body, seller: req.auth.sub });
-    res.status(201).json({ book: await Book.findById(book.id).select(publicBookFields) });
+    const data = { ...req.body };
+    for (const field of ["seller", "sellerId", "authorId", "createdByAdminId", "status", "rejectionReason", "isRecommended", "isHeroFeatured", "publishedAt"]) {
+      delete data[field];
+    }
+    const book = await Book.create({
+      ...data,
+      seller: req.auth.sub,
+      sellerId: req.auth.sub,
+      authorId: req.auth.sub,
+      status: "pending_approval",
+      isRecommended: false,
+      isHeroFeatured: false,
+    });
+    res.status(201).json({ book: await Book.findById(book.id).select(`${publicBookFields} status rejectionReason sellerId authorId`) });
   } catch (error) {
     next(error);
   }
